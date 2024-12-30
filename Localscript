@@ -1,0 +1,101 @@
+local Tool = script.Parent
+local UIS = game:GetService("UserInputService")
+local plr = game.Players.LocalPlayer
+local Mouse = plr:GetMouse()
+local Debounce = 1
+
+-- Проверка пути к RemoteEvent
+local RemoteEvent = game.ReplicatedStorage:FindFirstChild("FruitsFolder")
+if RemoteEvent then
+	RemoteEvent = RemoteEvent:FindFirstChild("Bomu")
+	if RemoteEvent then
+		RemoteEvent = RemoteEvent:FindFirstChild("Skill2")
+		if RemoteEvent then
+			RemoteEvent = RemoteEvent:FindFirstChild("RemoteEvent")
+		else
+			warn("Skill2 не найден в Bomu!")
+		end
+	else
+		warn("Bomu не найден в FruitsFolder!")
+	end
+else
+	warn("FruitsFolder не найден в ReplicatedStorage!")
+end
+
+-- Проверка наличия анимаций и звуков
+local AnimationCharge = script:WaitForChild("AnimationCharge")
+if not AnimationCharge then
+	warn("AnimationCharge не найден!")
+end
+
+local AnimationRelease = script:WaitForChild("AnimationRelease")
+if not AnimationRelease then
+	warn("AnimationRelease не найден!")
+end
+
+local HaoshokuSound = script:WaitForChild("Haoshoku Sound")
+if not HaoshokuSound then
+	warn("Haoshoku Sound не найден!")
+end
+
+Tool.Equipped:Connect(function()
+	Tool.Equip.Value = true
+end)
+
+Tool.Unequipped:Connect(function()
+	Tool.Equip.Value = false
+end)
+
+-- Реакция на нажатие клавиши
+UIS.InputBegan:Connect(function(Input)
+	if Input.KeyCode == Enum.KeyCode.X and Debounce == 1 and Tool.Equip.Value == true and Tool.Active.Value == "None" and script.Parent.BomuOn.Value == false then
+		Debounce = 2
+		local Track1 = plr.Character.Humanoid:LoadAnimation(AnimationCharge)
+		Track1:Play()
+
+		-- Телепортация персонажа к позиции курсора
+		for i = 1, math.huge do
+			if Debounce == 2 then
+				plr.Character.HumanoidRootPart.CFrame = CFrame.new(plr.Character.HumanoidRootPart.Position, Mouse.Hit.p)
+				plr.Character.HumanoidRootPart.Anchored = true
+			else
+				break
+			end
+			wait()
+		end
+	end
+end)
+
+-- Реакция на окончание анимации
+UIS.InputEnded:Connect(function(Input)
+	if Input.KeyCode == Enum.KeyCode.X and Debounce == 2 and Tool.Equip.Value == true and Tool.Active.Value == "None" then
+		Debounce = 3
+		local Track2 = plr.Character.Humanoid:LoadAnimation(AnimationRelease)
+		Track2:Play()
+
+		if Track1 then
+			Track1:Stop()  -- Обязательно проверяем, что Track1 существует, прежде чем остановить
+		end
+
+		HaoshokuSound:Play()
+
+		-- Отправка данных на сервер для выполнения взрыва
+		if RemoteEvent then
+			for i = 1, 10 do
+				wait(0.1)
+				local mousepos = Mouse.Hit
+				RemoteEvent:FireServer(mousepos, Mouse.Hit.p)  -- Отправка позиции курсора
+			end
+		else
+			warn("RemoteEvent не найден!")
+		end
+
+		wait(0.3)
+		Track2:Stop()  -- Проверка, что Track2 существует
+		plr.Character.HumanoidRootPart.Anchored = false
+		wait(0.5)
+		Tool.Active.Value = "None"
+		wait(3)
+		Debounce = 1
+	end
+end)
